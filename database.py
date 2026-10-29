@@ -1,25 +1,41 @@
+
+import os
 import psycopg2
 
 
 def get_connection():
-    """
-    Create and return a PostgreSQL database connection.
-    """
+    """Create a PostgreSQL connection using environment settings."""
 
     try:
-        connection = psycopg2.connect(
-            host="localhost",
-            port="5432",
-            database="HFT_Arbitrage",
-            user="postgres",
-            password="MyTCR@2005"
+        # Streamlit Cloud secrets, if available
+        try:
+            import streamlit as st
+            config = st.secrets.get("postgres", {})
+        except Exception:
+            config = {}
+
+        # Environment variables take priority
+        host = os.getenv("PGHOST") or config.get("host")
+        port = os.getenv("PGPORT") or config.get("port", "5432")
+        database = os.getenv("PGDATABASE") or config.get("database")
+        user = os.getenv("PGUSER") or config.get("user")
+        password = os.getenv("PGPASSWORD") or config.get("password")
+
+        if not all([host, database, user, password]):
+            raise ValueError(
+                "Database credentials are not configured."
+            )
+
+        return psycopg2.connect(
+            host=host,
+            port=port,
+            dbname=database,
+            user=user,
+            password=password,
+            connect_timeout=10,
+            sslmode="require"
         )
 
-        return connection
-
     except Exception as error:
-
-        print("Database connection error:")
-        print(error)
-
+        print(f"Database connection error: {error}")
         return None
